@@ -18,6 +18,7 @@ import sushy
 from sushy import exceptions
 from sushy.resources.chassis import chassis
 from sushy.resources import constants as res_cons
+from sushy.resources.manager import bmc as mgr_bmc
 from sushy.resources.manager import manager
 from sushy.resources.manager import virtual_media
 from sushy.resources.system import system
@@ -222,6 +223,34 @@ class ManagerTestCase(base.TestCase):
     def test_reset_manager_with_invalid_value(self):
         self.assertRaises(exceptions.InvalidParameterValueError,
                           self.manager.reset_manager, 'invalid-value')
+
+    def test_bmc(self):
+        # | WHEN |
+        actual_bmc = self.manager.bmc
+
+        # | THEN |
+        self.assertIsInstance(actual_bmc, mgr_bmc.Bmc)
+        self.assertEqual('Disabled', actual_bmc.attributes['IPMI1_Enable'])
+        self.assertEqual('ManagerAttributeRegistry.v1_0_0',
+                         actual_bmc._attribute_registry)
+
+        # | WHEN & THEN |
+        # tests for same object on invoking subsequently
+        self.assertIs(actual_bmc, self.manager.bmc)
+
+    def test_bmc_on_refresh(self):
+        # | GIVEN |
+        actual_bmc = self.manager.bmc
+        self.assertIsInstance(actual_bmc, mgr_bmc.Bmc)
+
+        # On refreshing the manager instance...
+        self.conn.get.return_value.json.return_value = self.json_doc
+        self.manager.invalidate()
+        self.manager.refresh(force=False)
+
+        # | WHEN & THEN |
+        self.assertTrue(actual_bmc._is_stale)
+        self.assertIsInstance(self.manager.bmc, mgr_bmc.Bmc)
 
     def test_virtual_media(self):
         # | GIVEN |

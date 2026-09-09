@@ -1,0 +1,20 @@
+{
+    "@odata.type": "#AttributeRegistry.v1_0_0.AttributeRegistry",
+    "Id": "Settings",
+    "Name": "Manager Configuration Pending Settings",
+    "AttributeRegistry": "ManagerAttributeRegistry.v1_0_0",
+    "Attributes": {
+        "IPMI1_Enable": "Enabled",
+        "SerialRedirection_Enable": "Enabled",
+        "SSH_Enable": "Enabled",
+        "Telnet_Enable": "Disabled",
+        "WebServer_SessionTimeout": 600
+    },
+    "@Redfish.SettingsApplyTime": {
+        "@odata.type": "#Settings.v1_1_0.PreferredApplyTime",
+        "ApplyTime": "OnReset",
+        "ApplyTime@Redfish.AllowableValues": [ "OnReset", "Immediate" ]
+    },
+    "@odata.context": "/redfish/v1/$metadata#Settings.Settings",
+    "@odata.id": "/redfish/v1/Managers/BMC/Settings"
+}

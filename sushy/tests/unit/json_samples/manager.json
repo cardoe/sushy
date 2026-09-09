@@ -39,6 +39,37 @@
         ]
     },
     "FirmwareVersion": "1.00",
+    "AttributeRegistry": "ManagerAttributeRegistry.v1_0_0",
+    "Attributes": {
+        "IPMI1_Enable": "Disabled",
+        "SerialRedirection_Enable": "Enabled",
+        "SSH_Enable": "Enabled",
+        "Telnet_Enable": "Disabled",
+        "WebServer_SessionTimeout": 1800
+    },
+    "@Redfish.Settings": {
+        "@odata.type": "#Settings.v1_0_0.Settings",
+        "ETag": "9234ac83b9700123cc32",
+        "Messages": [
+            {
+                "MessageId": "Test.1.0.Failed",
+                "RelatedProperties": [
+                    "#/Attributes/IPMI1_Enable"
+                ],
+                "MessageArgs": [
+                    "arg1"
+                ]
+            }
+        ],
+        "SettingsObject": {
+            "@odata.id": "/redfish/v1/Managers/BMC/Settings"
+        },
+        "Time": "2016-03-07T14:44.30-05:00",
+        "SupportedApplyTimes": [
+            "OnReset",
+            "Immediate"
+        ]
+    },
     "NetworkProtocol": {
         "@odata.id": "/redfish/v1/Managers/BMC/NetworkProtocol"
     },

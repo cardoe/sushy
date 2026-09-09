@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Adds a ``Bmc`` resource, accessible via the ``bmc`` property of a
+    ``Manager``, exposing the BMC (Manager) configuration attributes. These
+    are structurally identical to BIOS settings -- a set of named, typed
+    attributes described by an attribute registry -- and can be read through
+    ``attributes`` / ``pending_attributes`` and updated with
+    ``set_attribute`` / ``set_attributes``.

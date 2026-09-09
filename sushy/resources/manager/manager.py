@@ -19,6 +19,7 @@ from sushy import exceptions
 from sushy.resources import base
 from sushy.resources import common
 from sushy.resources import constants as res_cons
+from sushy.resources.manager import bmc as mgr_bmc
 from sushy.resources.manager import constants as mgr_cons
 from sushy.resources.manager import virtual_media
 from sushy.resources.system import ethernet_interface
@@ -206,6 +207,24 @@ class Manager(base.ResourceBase):
         LOG.debug('Resetting the Manager %s ...', self.identity)
         self._conn.post(target_uri, data={'ResetType': value})
         LOG.info('The Manager %s is being reset', self.identity)
+
+    @property
+    @utils.cache_it
+    def bmc(self):
+        """Property to reference a `Bmc` (BMC settings) instance
+
+        The BMC settings are the configuration attributes of the Manager
+        itself, structurally identical to BIOS settings. They are exposed
+        through the Manager's own ``Attributes`` and ``@Redfish.Settings``.
+
+        It is set once the first time it is queried. On refresh, this property
+        is marked as stale (greedy-refresh not done). Here the actual refresh
+        of the sub-resource happens, if stale.
+        """
+        return mgr_bmc.Bmc(
+            self._conn, self.path,
+            redfish_version=self.redfish_version,
+            registries=self.registries, root=self.root)
 
     @property
     @utils.cache_it
