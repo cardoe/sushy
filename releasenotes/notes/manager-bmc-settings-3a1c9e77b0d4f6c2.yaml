@@ -7,3 +7,9 @@ features:
     attributes described by an attribute registry -- and can be read through
     ``attributes`` / ``pending_attributes`` and updated with
     ``set_attribute`` / ``set_attributes``.
+
+    The attributes are located either on the ``Manager`` resource itself (when
+    it exposes an ``Attributes`` object) or in a vendor OEM sub-resource
+    referenced from the Manager's ``Links``. Dell iDRAC, for example, exposes
+    them under ``Links/Oem/Dell/DellAttributes``, and the ``iDRAC`` attributes
+    resource is preferred there.

@@ -208,21 +208,68 @@ class Manager(base.ResourceBase):
         self._conn.post(target_uri, data={'ResetType': value})
         LOG.info('The Manager %s is being reset', self.identity)
 
+    def _bmc_settings_path(self):
+        """Locate the resource exposing the BMC (Manager) attributes.
+
+        BMC settings are structurally identical to BIOS settings -- an
+        ``Attributes`` dictionary described by an ``AttributeRegistry`` -- but
+        Redfish does not standardise where a Manager exposes them. The two
+        shapes seen in the wild are:
+
+        * The Manager carries an ``Attributes`` object (and, optionally, a
+          ``@Redfish.Settings`` annotation) directly on its own resource.
+        * The attributes live in a vendor OEM sub-resource referenced from the
+          Manager's ``Links``. Dell iDRAC, for example, references them at
+          ``Links/Oem/Dell/DellAttributes`` and serves the BMC attributes from
+          ``/redfish/v1/Managers/iDRAC.Embedded.1/Oem/Dell/DellAttributes/``
+          ``iDRAC.Embedded.1`` (see dell/iDRAC-Redfish-Scripting).
+
+        The OEM sub-resource is preferred when present, falling back to the
+        Manager's own resource when the Manager exposes ``Attributes``.
+
+        :raises: MissingAttributeError if no BMC attributes can be located.
+        """
+        try:
+            dell_paths = utils.get_sub_resource_path_by(
+                self, ['Links', 'Oem', 'Dell', 'DellAttributes'],
+                is_collection=True)
+        except exceptions.MissingAttributeError:
+            dell_paths = []
+
+        if dell_paths:
+            # Prefer the iDRAC (BMC) attributes resource over the System and
+            # LifecycleController ones sharing the same collection.
+            return next(
+                (p for p in dell_paths
+                 if p.rstrip('/').endswith('iDRAC.Embedded.1')),
+                dell_paths[0])
+
+        if self.json.get('Attributes') is not None:
+            return self.path
+
+        raise exceptions.MissingAttributeError(
+            attribute='Attributes', resource=self.path)
+
     @property
     @utils.cache_it
     def bmc(self):
         """Property to reference a `Bmc` (BMC settings) instance
 
         The BMC settings are the configuration attributes of the Manager
-        itself, structurally identical to BIOS settings. They are exposed
-        through the Manager's own ``Attributes`` and ``@Redfish.Settings``.
+        itself, structurally identical to BIOS settings. Depending on the
+        vendor they are exposed either on the Manager's own resource or in an
+        OEM sub-resource referenced from the Manager's ``Links`` (see
+        :py:meth:`_bmc_settings_path`).
 
         It is set once the first time it is queried. On refresh, this property
         is marked as stale (greedy-refresh not done). Here the actual refresh
         of the sub-resource happens, if stale.
+
+        :raises: MissingAttributeError if the Manager does not expose BMC
+            attributes.
         """
         return mgr_bmc.Bmc(
-            self._conn, self.path,
+            self._conn, self._bmc_settings_path(),
             redfish_version=self.redfish_version,
             registries=self.registries, root=self.root)
 

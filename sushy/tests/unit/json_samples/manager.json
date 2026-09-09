@@ -99,7 +99,21 @@
         "ManagerInChassis": {
             "@odata.id": "/redfish/v1/Chassis/1U"
         },
-        "Oem": {}
+        "Oem": {
+            "Dell": {
+                "DellAttributes": [
+                    {
+                        "@odata.id": "/redfish/v1/Managers/BMC/Oem/Dell/DellAttributes/iDRAC.Embedded.1"
+                    },
+                    {
+                        "@odata.id": "/redfish/v1/Managers/BMC/Oem/Dell/DellAttributes/System.Embedded.1"
+                    },
+                    {
+                        "@odata.id": "/redfish/v1/Managers/BMC/Oem/Dell/DellAttributes/LifecycleController.Embedded.1"
+                    }
+                ]
+            }
+        }
     },
     "Actions": {
         "#Manager.Reset": {
