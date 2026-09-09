@@ -22,6 +22,7 @@ from oslotest.base import BaseTestCase
 import requests
 
 import sushy
+from sushy.oem.dell.resources import attributes
 from sushy.oem.dell.resources.manager import constants as mgr_cons
 from sushy.oem.dell.resources.manager import idrac_card_service as idrac_card
 from sushy.oem.dell.resources.manager import job_collection as jc
@@ -51,6 +52,15 @@ class ManagerTestCase(BaseTestCase):
 
         self.manager = manager.Manager(self.conn, '/redfish/v1/Managers/BMC',
                                        redfish_version='1.0.2')
+
+    @mock.patch('sushy.resources.oem.common._global_extn_mgrs_by_resource', {})
+    def test_bmc(self):
+        oem = self.manager.get_oem_extension('Dell')
+
+        bmc = oem.bmc
+
+        self.assertIsInstance(bmc, attributes.DellAttributes)
+        self.assertEqual('iDRAC.Embedded.1', bmc.identity)
 
     @mock.patch('sushy.resources.oem.common._global_extn_mgrs_by_resource', {})
     def test_import_system_configuration_uri(self):

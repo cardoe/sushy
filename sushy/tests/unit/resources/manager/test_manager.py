@@ -229,39 +229,18 @@ class ManagerTestCase(base.TestCase):
         # | WHEN |
         actual_bmc = self.manager.bmc
 
-        # | THEN |
+        # | THEN | the attributes are read from the Manager resource itself
         self.assertIsInstance(actual_bmc, mgr_bmc.Bmc)
-        # The Dell OEM DellAttributes iDRAC resource is preferred over the
-        # System and LifecycleController ones (matches the endpoints hit by
-        # dell/iDRAC-Redfish-Scripting).
-        self.assertEqual(
-            '/redfish/v1/Managers/BMC/Oem/Dell/DellAttributes/'
-            'iDRAC.Embedded.1',
-            actual_bmc.path)
+        self.assertEqual('/redfish/v1/Managers/BMC', actual_bmc.path)
+        self.assertEqual('Disabled', actual_bmc.attributes['IPMI1_Enable'])
 
         # | WHEN & THEN |
         # tests for same object on invoking subsequently
         self.assertIs(actual_bmc, self.manager.bmc)
 
-    def test_bmc_manager_attributes_fallback(self):
-        # | GIVEN | a Manager exposing Attributes directly and no OEM link
-        json_doc = copy.deepcopy(self.json_doc)
-        json_doc['Links']['Oem'] = {}
-        self.conn.get.return_value.json.return_value = json_doc
-        mgr_obj = manager.Manager(self.conn, '/redfish/v1/Managers/BMC',
-                                  redfish_version='1.0.2')
-
-        # | WHEN |
-        actual_bmc = mgr_obj.bmc
-
-        # | THEN | it reads the attributes from the Manager itself
-        self.assertIsInstance(actual_bmc, mgr_bmc.Bmc)
-        self.assertEqual('/redfish/v1/Managers/BMC', actual_bmc.path)
-
     def test_bmc_missing(self):
-        # | GIVEN | a Manager with neither an OEM link nor Attributes
+        # | GIVEN | a Manager that does not expose Attributes directly
         json_doc = copy.deepcopy(self.json_doc)
-        json_doc['Links']['Oem'] = {}
         json_doc.pop('Attributes', None)
         self.conn.get.return_value.json.return_value = json_doc
         mgr_obj = manager.Manager(self.conn, '/redfish/v1/Managers/BMC',

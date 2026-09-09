@@ -570,6 +570,20 @@ VFDD\
                                             self.redfish_version,
                                             self.registries)
 
+    @property
+    def bmc(self):
+        """The BMC (iDRAC) attributes as a settings resource.
+
+        Of the Dell attribute resources (iDRAC, System, and
+        LifecycleController), the iDRAC one holds the BMC configuration; it is
+        served at ``.../Oem/Dell/DellAttributes/iDRAC.Embedded.1``.
+
+        :returns: a :class:`.DellAttributes` for the iDRAC attributes, or
+            None if the iDRAC attributes resource is not present.
+        """
+        return next((attr for attr in self.attributes
+                     if attr.identity == 'iDRAC.Embedded.1'), None)
+
     def _wait_for_idrac_state(self, host, alive=True, required_count=3,
                               retries=24):
         """Wait for iDRAC to become reachable or not reachable.
