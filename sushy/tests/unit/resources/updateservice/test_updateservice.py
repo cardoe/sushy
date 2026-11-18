@@ -190,6 +190,18 @@ class UpdateServiceTestCase(base.TestCase):
             self.upd_serv.redfish_version,
             self.upd_serv._registries, self.upd_serv.root)
 
+    @mock.patch.object(softwareinventory, 'SoftwareInventoryCollection',
+                       autospec=True)
+    def test_firmware_inventory_expanded(self,
+                                         software_inventory_collection_mock):
+        self.upd_serv.firmware_inventory_expanded
+        software_inventory_collection_mock.assert_called_once_with(
+            self.conn,
+            '/redfish/v1/UpdateService/FirmwareInventory'
+            '?$expand=.($levels=1)',
+            redfish_version=self.upd_serv.redfish_version,
+            registries=self.upd_serv._registries, root=self.upd_serv.root)
+
 
 class UpdateServiceNoInvTestCase(base.TestCase):
 
@@ -217,3 +229,9 @@ class UpdateServiceNoInvTestCase(base.TestCase):
             exceptions.MissingAttributeError,
             'FirmwareInventory/@odata.id',
             getattr, self.upd_serv, 'firmware_inventory')
+
+    def test_firmware_inventory_expanded_when_fw_inv_absent(self):
+        self.assertRaisesRegex(
+            exceptions.MissingAttributeError,
+            'FirmwareInventory/@odata.id',
+            getattr, self.upd_serv, 'firmware_inventory_expanded')

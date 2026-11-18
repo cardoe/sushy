@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Adds the ``UpdateService.firmware_inventory_expanded`` property, which
+    retrieves the ``FirmwareInventory`` collection with
+    ``$expand=.($levels=1)`` so all members are returned in a single
+    request. ``SoftwareInventoryCollection.get_members()`` now builds
+    members from the expanded document when present and falls back to
+    fetching each member when the BMC does not honour the expand query.

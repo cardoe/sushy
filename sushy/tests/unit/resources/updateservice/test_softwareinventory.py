@@ -134,3 +134,73 @@ class SoftwareInventoryCollectionTestCase(base.TestCase):
         mock_softwareinventory.assert_has_calls(calls)
         self.assertIsInstance(members, list)
         self.assertEqual(3, len(members))
+
+
+class SoftwareInventoryCollectionExpandedTestCase(base.TestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.conn = mock.Mock()
+        with open('sushy/tests/unit/json_samples/'
+                  'firmwareinventory_collection_expanded.json') as f:
+            self.json_doc = json.load(f)
+
+        self.conn.get.return_value.json.return_value = self.json_doc
+
+        self.soft_inv_col = softwareinventory.SoftwareInventoryCollection(
+            self.conn,
+            '/redfish/v1/UpdateService/FirmwareInventory?$expand=.($levels=1)',
+            redfish_version='1.3.0')
+
+    def test_get_members_expanded(self):
+        self.conn.get.reset_mock()
+        members = self.soft_inv_col.get_members()
+
+        # All members came from the expanded document, nothing fetched.
+        self.conn.get.assert_not_called()
+        self.assertEqual(3, len(members))
+        self.assertEqual(
+            ['Installed-25227-7.10.30.00', 'Installed-159-2.19.1',
+             'Previous-159-2.18.0'],
+            [m.identity for m in members])
+        self.assertEqual('Integrated Dell Remote Access Controller',
+                         members[0].name)
+        self.assertEqual('7.10.30.00', members[0].version)
+        self.assertEqual('Dell', members[0].manufacturer)
+        self.assertEqual('25227', members[0].software_id)
+        self.assertEqual(
+            '/redfish/v1/UpdateService/FirmwareInventory/'
+            'Installed-25227-7.10.30.00', members[0].path)
+
+    def test_get_members_not_expanded_fallback(self):
+        with open('sushy/tests/unit/json_samples/'
+                  'firmwareinventory_collection.json') as f:
+            unexpanded = json.load(f)
+        with open('sushy/tests/unit/json_samples/'
+                  'softwareinventory.json') as f:
+            member = json.load(f)
+        self.conn.get.reset_mock()
+        self.conn.get.return_value.json.side_effect = [
+            unexpanded, member, member, member]
+
+        col = softwareinventory.SoftwareInventoryCollection(
+            self.conn,
+            '/redfish/v1/UpdateService/FirmwareInventory?$expand=.($levels=1)',
+            redfish_version='1.3.0')
+        members = col.get_members()
+
+        # One GET for the collection, one per member.
+        self.assertEqual(4, self.conn.get.call_count)
+        self.assertEqual(3, len(members))
+        self.assertEqual('BMC', members[0].identity)
+
+    def test_get_members_empty(self):
+        self.conn.get.return_value.json.return_value = {
+            '@odata.id': '/redfish/v1/UpdateService/FirmwareInventory',
+            'Name': 'Firmware Inventory Collection',
+            'Members': []}
+        col = softwareinventory.SoftwareInventoryCollection(
+            self.conn,
+            '/redfish/v1/UpdateService/FirmwareInventory?$expand=.($levels=1)',
+            redfish_version='1.3.0')
+        self.assertEqual([], col.get_members())

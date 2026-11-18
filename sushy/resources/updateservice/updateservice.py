@@ -26,6 +26,8 @@ from sushy import utils
 
 LOG = logging.getLogger(__name__)
 
+EXPAND_QUERY = '?$expand=.($levels=1)'
+
 
 class ActionsField(base.CompositeField):
 
@@ -195,5 +197,30 @@ class UpdateService(base.ResourceBase):
         return softwareinventory.SoftwareInventoryCollection(
             self._conn,
             self._firmware_inventory_path,
+            redfish_version=self.redfish_version,
+            registries=self.registries, root=self.root)
+
+    @property
+    @utils.cache_it
+    def firmware_inventory_expanded(self):
+        """FirmwareInventory collection with members expanded inline.
+
+        Requests the collection with ``$expand=.($levels=1)`` so that all
+        members are returned in a single request. BMCs that do not honour
+        the expand query return plain references, in which case members
+        are fetched individually.
+
+        :raises: MissingAttributeError if 'FirmwareInventory/@odata.id'
+            field is missing.
+        :returns: `SoftwareInventoryCollection` instance
+        """
+        if not self._firmware_inventory_path:
+            raise exceptions.MissingAttributeError(
+                attribute='FirmwareInventory/@odata.id',
+                resource=self._path)
+
+        return softwareinventory.SoftwareInventoryCollection(
+            self._conn,
+            f'{self._firmware_inventory_path}{EXPAND_QUERY}',
             redfish_version=self.redfish_version,
             registries=self.registries, root=self.root)

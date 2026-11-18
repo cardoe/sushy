@@ -17,6 +17,7 @@ import logging
 
 from sushy.resources import base
 from sushy.resources import common
+from sushy import utils
 
 LOG = logging.getLogger(__name__)
 
@@ -59,7 +60,8 @@ class SoftwareInventory(base.ResourceBase):
     """The version of the software"""
 
     def __init__(self, connector, identity,
-                 redfish_version=None, registries=None, root=None):
+                 redfish_version=None, registries=None, root=None,
+                 json_doc=None):
         """A class representing a SoftwareInventory
 
         :param connector: A Connector instance
@@ -69,10 +71,13 @@ class SoftwareInventory(base.ResourceBase):
         :param registries: Dict of Redfish Message Registry objects to be
             used in any resource that needs registries to parse messages
         :param root: Sushy root object. Empty for Sushy root itself.
+        :param json_doc: parsed JSON document of the resource, used
+            instead of fetching it when it was already returned inline
+            by an expanded collection.
         """
         super().__init__(
             connector, identity, redfish_version=redfish_version,
-            registries=registries, root=root)
+            registries=registries, root=root, json_doc=json_doc)
 
 
 class SoftwareInventoryCollection(base.ResourceCollectionBase):
@@ -102,3 +107,29 @@ class SoftwareInventoryCollection(base.ResourceCollectionBase):
         super().__init__(
             connector, identity, redfish_version=redfish_version,
             registries=registries, root=root)
+
+    @utils.cache_it
+    def get_members(self):
+        """Return SoftwareInventory objects, using expanded JSON if present.
+
+        When the collection was retrieved with ``$expand``, each member is
+        built from the inlined document instead of being fetched with a
+        separate request. If the BMC ignored the expand request and only
+        returned references, fall back to fetching each member.
+
+        :returns: A list of ``SoftwareInventory`` instances
+        """
+        members = []
+        for member in self.json.get('Members', []):
+            # If data only contains a reference (@odata.id),
+            # treat as unexpanded
+            if (not isinstance(member, dict)
+                    or list(member.keys()) == ['@odata.id']):
+                return super().get_members()
+
+            members.append(SoftwareInventory(
+                self._conn, member['@odata.id'],
+                redfish_version=self.redfish_version,
+                registries=self.registries, root=self.root,
+                json_doc=member))
+        return members
