@@ -17,6 +17,8 @@ import collections
 import functools
 import logging
 import threading
+from typing import Any
+from typing import Final
 
 from sushy import exceptions
 from sushy.resources import constants as res_cons
@@ -24,6 +26,9 @@ from sushy.resources import constants as res_cons
 LOG = logging.getLogger(__name__)
 
 CACHE_ATTR_NAMES_VAR_NAME = '_cache_attr_names'
+
+EXPAND_QUERY: Final[str] = '?$expand=.($levels=1)'
+"""Query string expanding the direct subordinate resources of a resource."""
 
 
 def revert_dictionary(dictionary):
@@ -53,6 +58,22 @@ def get_members_identities(members):
         members_list.append(path.rstrip('/'))
 
     return tuple(members_list)
+
+
+def is_reference_only(data: Any) -> bool:
+    """Check whether a JSON object is only a reference to a resource.
+
+    A reference carries the ``@odata.id`` of the resource and, at most,
+    other annotations such as ``@odata.etag``. An expanded resource also
+    carries its properties.
+
+    :param data: A JSON value, typically a collection member or a
+        navigation property.
+    :returns: True if ``data`` is a reference without resource properties.
+    """
+    return (isinstance(data, dict)
+            and '@odata.id' in data
+            and all(key.startswith('@') for key in data))
 
 
 def int_or_none(x):

@@ -174,8 +174,7 @@ class Chassis(base.ResourceBase):
 
         # If expanded data only contains a reference (@odata.id),
         # treat as unexpanded
-        if (expanded_data and isinstance(expanded_data, dict)
-                and list(expanded_data.keys()) == ['@odata.id']):
+        if utils.is_reference_only(expanded_data):
             return None
 
         return expanded_data

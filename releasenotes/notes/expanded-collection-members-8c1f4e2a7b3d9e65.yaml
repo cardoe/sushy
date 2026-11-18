@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Building collection members from an ``$expand`` response is now shared
+    by ``ResourceCollectionBase`` (enabled per collection with
+    ``_expandable_members``) and used by the ``Storage`` and
+    ``SimpleStorage`` collections. A member carrying only annotations such
+    as ``@odata.etag`` is now treated as a reference and fetched, an
+    expanded member without ``@odata.id`` is skipped with a warning instead
+    of raising ``KeyError``, and a partially expanded collection fetches
+    every member instead of mixing inlined and fetched members.

@@ -214,6 +214,28 @@ class TestResource(resource_base.ResourceBase):
         pass
 
 
+class TestExpandableResource(resource_base.ResourceBase):
+    """A concrete Test Resource that can be built from expanded JSON"""
+
+    identity = resource_base.Field('Id')
+
+    def __init__(self, connector, path, redfish_version=None,
+                 registries=None, root=None, json_doc=None):
+        super().__init__(connector, path, redfish_version=redfish_version,
+                         registries=registries, root=root,
+                         json_doc=json_doc)
+
+
+class TestExpandableResourceCollection(resource_base.ResourceCollectionBase):
+    """A concrete Test Resource Collection supporting expanded members"""
+
+    _expandable_members = True
+
+    @property
+    def _resource_type(self):
+        return TestExpandableResource
+
+
 class TestResourceCollection(resource_base.ResourceCollectionBase):
     """A concrete Test Resource Collection to test against"""
 
@@ -318,6 +340,95 @@ class ResourceCollectionBaseTestCase(base.TestCase):
     def test_get_members_caching(self):
         result = self._validate_get_members_result(('1', '2'))
         self.assertIs(result, self.test_resource_collection.get_members())
+
+    def test_get_members_expanded_not_expandable(self):
+        # Inlined members are ignored unless the collection opts in.
+        self.conn.get.return_value.json.return_value = {
+            'Members': [{'@odata.id': 'Fakes/1', 'Id': '1'}]}
+        collection = TestResourceCollection(self.conn)
+        self.conn.reset_mock()
+        self.conn.get.return_value.json.return_value = {}
+
+        members = collection.get_members()
+
+        # Fetched individually rather than built from the inlined JSON.
+        self.assertEqual(['Fakes/1'], [m.identity for m in members])
+        self.assertEqual(1, self.conn.get.call_count)
+
+
+class ExpandedResourceCollectionTestCase(base.TestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.conn = mock.MagicMock()
+
+    def _collection(self, members):
+        self.conn.get.return_value.json.return_value = {
+            '@odata.id': '/redfish/v1/Fakes',
+            'Name': 'Fakes',
+            'Members': members}
+        collection = TestExpandableResourceCollection(
+            self.conn, '/redfish/v1/Fakes', redfish_version='1.0.x')
+        self.conn.reset_mock()
+        return collection
+
+    def test_get_members_expanded(self):
+        collection = self._collection([
+            {'@odata.id': '/redfish/v1/Fakes/1', 'Id': '1'},
+            {'@odata.id': '/redfish/v1/Fakes/2/', 'Id': '2'}])
+
+        members = collection.get_members()
+
+        self.conn.get.assert_not_called()
+        self.assertEqual(['1', '2'], [m.identity for m in members])
+        self.assertEqual(['/redfish/v1/Fakes/1', '/redfish/v1/Fakes/2'],
+                         [m.path for m in members])
+        self.assertEqual('1.0.x', members[0].redfish_version)
+        self.assertIs(members, collection.get_members())
+
+    def test_get_members_references(self):
+        collection = self._collection([
+            {'@odata.id': '/redfish/v1/Fakes/1'},
+            {'@odata.id': '/redfish/v1/Fakes/2', '@odata.etag': 'W/"2"'}])
+        self.conn.get.return_value.json.side_effect = [{'Id': '1'},
+                                                       {'Id': '2'}]
+
+        members = collection.get_members()
+
+        self.assertEqual(['1', '2'], [m.identity for m in members])
+        self.conn.get.assert_has_calls([
+            mock.call(path='/redfish/v1/Fakes/1'),
+            mock.call(path='/redfish/v1/Fakes/2')], any_order=True)
+
+    def test_get_members_partially_expanded(self):
+        # Mixed expanded and reference members are all fetched.
+        collection = self._collection([
+            {'@odata.id': '/redfish/v1/Fakes/1', 'Id': '1'},
+            {'@odata.id': '/redfish/v1/Fakes/2'}])
+        self.conn.get.return_value.json.side_effect = [{'Id': '1'},
+                                                       {'Id': '2'}]
+
+        members = collection.get_members()
+
+        self.assertEqual(['1', '2'], [m.identity for m in members])
+        self.assertEqual(2, self.conn.get.call_count)
+
+    @mock.patch.object(resource_base.LOG, 'warning', autospec=True)
+    def test_get_members_expanded_missing_odata_id(self, log_mock):
+        collection = self._collection([
+            {'@odata.id': '/redfish/v1/Fakes/1', 'Id': '1'},
+            {'Id': '2'}])
+
+        members = collection.get_members()
+
+        self.conn.get.assert_not_called()
+        self.assertEqual(['1'], [m.identity for m in members])
+        self.assertEqual(1, log_mock.call_count)
+
+    def test_get_members_empty(self):
+        collection = self._collection([])
+        self.assertEqual([], collection.get_members())
+        self.conn.get.assert_not_called()
 
 
 TEST_JSON = {

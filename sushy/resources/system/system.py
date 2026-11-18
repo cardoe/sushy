@@ -42,7 +42,7 @@ from sushy import utils
 
 LOG = logging.getLogger(__name__)
 
-EXPAND_QUERY = '?$expand=.($levels=1)'
+EXPAND_QUERY = utils.EXPAND_QUERY
 
 
 def _parse_last_reset_time(value):

@@ -41,6 +41,22 @@ class UtilsTestCase(base.TestCase):
         self.assertEqual(expected, utils.get_members_identities(members))
         self.assertEqual(1, log_mock.call_count)
 
+    def test_is_reference_only(self):
+        self.assertTrue(utils.is_reference_only(
+            {'@odata.id': '/redfish/v1/Systems/1'}))
+        self.assertTrue(utils.is_reference_only(
+            {'@odata.id': '/redfish/v1/Systems/1', '@odata.etag': 'W/"1"'}))
+
+    def test_is_reference_only_expanded(self):
+        self.assertFalse(utils.is_reference_only(
+            {'@odata.id': '/redfish/v1/Systems/1', 'Id': '1'}))
+
+    def test_is_reference_only_not_reference(self):
+        self.assertFalse(utils.is_reference_only({}))
+        self.assertFalse(utils.is_reference_only({'@odata.etag': 'W/"1"'}))
+        self.assertFalse(utils.is_reference_only(None))
+        self.assertFalse(utils.is_reference_only('/redfish/v1/Systems/1'))
+
     def test_int_or_none(self):
         self.assertEqual(1, utils.int_or_none('1'))
         self.assertIsNone(utils.int_or_none(None))

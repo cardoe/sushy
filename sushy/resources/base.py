@@ -21,6 +21,8 @@ from importlib import resources
 import io
 import json
 import logging
+from typing import Any
+from typing import ClassVar
 import zipfile
 
 from sushy import exceptions
@@ -898,6 +900,58 @@ class ResourceCollectionBase(ResourceLinksBase):
     members_identities = Field('Members', default=[],
                                adapter=utils.get_members_identities)
     """A tuple with the members identities"""
+
+    _expandable_members: ClassVar[bool] = False
+    """Build members from inlined JSON when the collection is expanded.
+
+    Set to True on collections whose ``_resource_type`` accepts a
+    ``json_doc`` argument, so that a collection retrieved with
+    :data:`sushy.utils.EXPAND_QUERY` needs no request per member.
+    """
+
+    def _get_expanded_members(self) -> list[ResourceBase] | None:
+        """Build members from the expanded ``Members`` of the collection.
+
+        :returns: A list of ``_resource_type`` objects, or None if the
+            collection holds no expanded members and they have to be
+            fetched individually.
+        """
+        members_json: list[Any] = (self._json or {}).get('Members') or []
+        if not members_json or not all(
+                isinstance(member, dict) and not utils.is_reference_only(
+                    member) for member in members_json):
+            return None
+
+        members: list[ResourceBase] = []
+        for member in members_json:
+            path = member.get('@odata.id')
+            if not path:
+                LOG.warning('Could not find the \'@odata.id\' attribute for '
+                            'expanded member of %(path)s: %(member)s',
+                            {'path': self._path, 'member': member})
+                continue
+            members.append(self._resource_type(
+                self._conn, path.rstrip('/'),
+                redfish_version=self.redfish_version,
+                registries=self.registries, root=self.root,
+                json_doc=member))
+        return members
+
+    @utils.cache_it
+    def get_members(self) -> list[ResourceBase]:
+        """Return a list of ``_resource_type`` objects present in collection
+
+        When :attr:`_expandable_members` is set and the collection was
+        returned with its members expanded, the members are built from the
+        inlined JSON instead of being fetched one by one.
+
+        :returns: A list of ``_resource_type`` objects
+        """
+        if self._expandable_members:
+            members = self._get_expanded_members()
+            if members is not None:
+                return members
+        return super().get_members()
 
 
 class MutableResourceCollectionBase(ResourceCollectionBase):
