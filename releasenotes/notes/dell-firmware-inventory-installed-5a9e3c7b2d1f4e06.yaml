@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Adds ``sushy.oem.dell.firmware_inventory.get_installed_members()`` to
+    filter Dell iDRAC FirmwareInventory members down to the ``Installed-``
+    entries, dropping the ``Previous-``, ``Available-`` and duplicate
+    ``Current-`` entries iDRAC also lists.
